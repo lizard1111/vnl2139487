@@ -524,33 +524,21 @@
             const content = document.getElementById('network-content');
             const svgDoc = document.getElementById('network-svg').contentDocument;
             const laserBeam = document.querySelector('.laser-beam');
+            const svg = svgDoc.querySelector('svg');
             
             if (!svgDoc) return;
 
             injectStyles(svgDoc);
 
-            // Handle both mouse and touch events
-            function handlePointerMove(e) {
-                // Prevent default touch behavior
-                e.preventDefault();
-                
+            // Combined update function for both mouse and touch
+            function updateEffects(clientX, clientY) {
                 const rect = container.getBoundingClientRect();
-                let clientX, clientY;
-
-                // Handle both mouse and touch events
-                if (e.touches) {
-                    clientX = e.touches[0].clientX;
-                    clientY = e.touches[0].clientY;
-                } else {
-                    clientX = e.clientX;
-                    clientY = e.clientY;
-                }
-
+                
                 // 3D rotation
                 const xRot = ((clientY - rect.top) / rect.height - 0.5) * 20;
                 const yRot = ((clientX - rect.left) / rect.width - 0.5) * 20;
                 
-                // Apply transforms with vendor prefixes
+                // Apply transforms
                 content.style.transform = `rotateX(${-xRot}deg) rotateY(${yRot}deg)`;
                 content.style.webkitTransform = `rotateX(${-xRot}deg) rotateY(${yRot}deg)`;
 
@@ -559,35 +547,6 @@
                 laserBeam.style.top = `${mouseY}px`;
 
                 // Update glowing effects
-                updateLaserEffects(mouseY);
-            }
-
-            // Add both mouse and touch event listeners
-            container.addEventListener('mousemove', handlePointerMove);
-            container.addEventListener('touchmove', handlePointerMove, { passive: false });
-
-            // Reset on touch/mouse end
-            function handlePointerEnd() {
-                content.style.transform = 'rotateX(0deg) rotateY(0deg)';
-                content.style.webkitTransform = 'rotateX(0deg) rotateY(0deg)';
-            }
-
-            container.addEventListener('mouseleave', handlePointerEnd);
-            container.addEventListener('touchend', handlePointerEnd);
-
-            // Prevent default touch behavior on the container
-            container.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
-
-            const neurons = svgDoc.querySelectorAll('path');
-            const svg = svgDoc.querySelector('svg');
-
-            // Update laser position and neurons
-            function updateLaser(e) {
-                const rect = container.getBoundingClientRect();
-                const mouseY = Math.max(0, Math.min(rect.height, e.clientY - rect.top));
-                
-                laserBeam.style.top = `${mouseY}px`;
-
                 const viewBox = svg.viewBox.baseVal;
                 const svgY = (mouseY / rect.height) * viewBox.height;
                 
@@ -612,7 +571,6 @@
                         element.style.opacity = 0.2 + (0.4 * (1 - distance / (proximityThreshold * 2)));
                     } else {
                         element.classList.remove('glow', 'subtle-glow');
-                        // Don't set opacity for text to allow flicker animation
                         if (element.tagName.toLowerCase() === 'path') {
                             element.style.opacity = 0.2;
                         }
@@ -620,23 +578,35 @@
                 });
             }
 
-            function triggerNeuralPulse(neuron) {
-                neuron.classList.add('pulse');
-                setTimeout(() => {
-                    neuron.classList.remove('pulse');
-                }, 500);
+            // Mouse event handler
+            function handleMouseMove(e) {
+                e.preventDefault();
+                updateEffects(e.clientX, e.clientY);
             }
 
-            // Add event listeners to container
-            container.addEventListener('mousemove', updateLaser);
+            // Touch event handler
+            function handleTouchMove(e) {
+                e.preventDefault();
+                const touch = e.touches[0];
+                updateEffects(touch.clientX, touch.clientY);
+            }
 
-            // Start random flashing for each neuron
-            neurons.forEach(neuron => {
-                setTimeout(() => flashNeuron(neuron), randomInterval(0, 2000));
-            });
+            // Add event listeners
+            container.addEventListener('mousemove', handleMouseMove);
+            container.addEventListener('touchmove', handleTouchMove, { passive: false });
+            container.addEventListener('touchstart', handleTouchMove, { passive: false });
+
+            // Reset on end
+            function handleEnd() {
+                content.style.transform = 'rotateX(0deg) rotateY(0deg)';
+                content.style.webkitTransform = 'rotateX(0deg) rotateY(0deg)';
+            }
+
+            container.addEventListener('mouseleave', handleEnd);
+            container.addEventListener('touchend', handleEnd);
         }
 
-        // Wait for SVG to load
+        // Make sure styles are injected when SVG loads
         document.getElementById('network-svg').addEventListener('load', initializeAnimation);
     </script>
 </body>
